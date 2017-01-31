@@ -8,6 +8,7 @@
 #endif
 
 #include <array>
+#include <deque>
 #include <forward_list>
 #include <limits>
 #include <list>
@@ -301,6 +302,34 @@ struct convert<std::vector<T>> {
       rhs.push_back(it->template as<T>());
 #else
       rhs.push_back(it->as<T>());
+#endif
+    return true;
+  }
+};
+
+// std::deque
+template <class T, class Alloc>
+struct convert<std::deque<T, Alloc>> {
+
+  using value_type = std::deque<T, Alloc>;
+
+  static Node encode(const value_type& rhs) {
+    Node node(NodeType::Sequence);
+    for (const auto& item : rhs) node.push_back(item);
+    return node;
+  }
+
+  static bool decode(const Node& node, value_type& rhs) {
+    if (!node.IsSequence())
+      return false;
+
+    rhs.clear();
+    for (const auto& item : node)
+#if defined(__GNUC__) && __GNUC__ < 4
+      // workaround for GCC 3:
+      rhs.push_back(item.template as<T>());
+#else
+      rhs.push_back(item.as<T>());
 #endif
     return true;
   }

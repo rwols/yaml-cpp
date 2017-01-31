@@ -211,6 +211,20 @@ TEST(NodeTest, StdVector) {
   EXPECT_EQ(primes, node["primes"].as<std::vector<int>>());
 }
 
+TEST(NodeTest, StdDeque) {
+  std::deque<int> primes;
+  primes.push_back(2);
+  primes.push_back(3);
+  primes.push_back(5);
+  primes.push_back(7);
+  primes.push_back(11);
+  primes.push_back(13);
+
+  Node node;
+  node["primes"] = primes;
+  EXPECT_EQ(primes, node["primes"].as<std::deque<int>>());
+}
+
 TEST(NodeTest, StdList) {
   std::list<int> primes;
   primes.push_back(2);
