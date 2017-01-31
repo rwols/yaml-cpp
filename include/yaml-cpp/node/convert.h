@@ -8,6 +8,7 @@
 #endif
 
 #include <array>
+#include <forward_list>
 #include <limits>
 #include <list>
 #include <map>
@@ -238,6 +239,36 @@ struct convert<std::list<T>> {
 #else
       rhs.push_back(it->as<T>());
 #endif
+    return true;
+  }
+};
+
+// std::forward_list
+template <class T, class Alloc>
+struct convert<std::forward_list<T, Alloc>> {
+  static Node encode(const std::forward_list<T, Alloc>& rhs) {
+    Node node(NodeType::Sequence);
+    for (const auto& item : rhs) node.push_back(item);
+    return node;
+  }
+
+  static bool decode(const Node& node, std::forward_list<T, Alloc>& rhs) {
+    if (!node.IsSequence())
+      return false;
+
+    rhs.clear();
+
+    // Walk the sequence backwards, because std::forward_list does not have
+    // push_back, only push_front.
+    for (std::size_t i = node.size() - 1; i != (std::size_t)-1; --i)
+    {
+#if defined(__GNUC__) && __GNUC__ < 4
+      // workaround for GCC 3:
+      rhs.push_front(node[i].template as<T>());
+#else
+      rhs.push_front(node[i].as<T>());
+#endif
+    }
     return true;
   }
 };

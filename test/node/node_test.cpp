@@ -225,6 +225,20 @@ TEST(NodeTest, StdList) {
   EXPECT_EQ(primes, node["primes"].as<std::list<int>>());
 }
 
+TEST(NodeTest, StdForwardList) {
+  std::forward_list<int> primes;
+  primes.push_front(13);
+  primes.push_front(11);
+  primes.push_front(7);
+  primes.push_front(5);
+  primes.push_front(3);
+  primes.push_front(2);
+
+  Node node;
+  node["primes"] = primes;
+  EXPECT_EQ(primes, node["primes"].as<std::forward_list<int>>());
+}
+
 TEST(NodeTest, StdMap) {
   std::map<int, int> squares;
   squares[0] = 0;
