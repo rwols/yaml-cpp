@@ -267,6 +267,20 @@ TEST(NodeTest, StdUnorderedMap) {
   EXPECT_EQ(squares, actualSquares);
 }
 
+TEST(NodeTest, StdSet) {
+  std::set<int> primes;
+  primes.insert(0);
+  primes.insert(1);
+  primes.insert(4);
+  primes.insert(9);
+  primes.insert(16);
+
+  Node node;
+  node["primes"] = primes;
+  const auto actualPrimes = node["primes"].as<std::set<int>>();
+  EXPECT_EQ(primes, actualPrimes);
+}
+
 TEST(NodeTest, StdPair) {
   std::pair<int, std::string> p;
   p.first = 5;

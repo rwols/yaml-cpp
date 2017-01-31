@@ -12,6 +12,7 @@
 #include <limits>
 #include <list>
 #include <map>
+#include <set>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
@@ -218,6 +219,36 @@ struct convert<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> {
     return true;
   }
 };
+
+// std::set
+// A set is a map where each value is null.
+template <class Key, class Compare, class Alloc>
+struct convert<std::set<Key, Compare, Alloc>> {
+
+  using value_type = std::set<Key, Compare, Alloc>;
+
+  static Node encode(const value_type& rhs) {
+    Node node(NodeType::Map);
+    for (const auto& item : rhs) node.force_insert(item, Null);
+    return node;
+  }
+
+  static bool decode(const Node& node, value_type& rhs) {
+    if (!node.IsMap())
+      return false;
+
+    rhs.clear();
+    for (const auto& kv : node)
+#if defined(__GNUC__) && __GNUC__ < 4
+      // workaround for GCC 3:
+      rhs.insert(kv.first.template as<Key>());
+#else
+      rhs.insert(kv.first.as<Key>());
+#endif
+    return true;
+  }
+};
+
 
 // std::vector
 template <typename T>
