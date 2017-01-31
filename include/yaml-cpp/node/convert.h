@@ -250,7 +250,7 @@ struct convert<std::set<Key, Compare, Alloc>> {
   }
 };
 
-// std::set
+// std::unordered_set
 // A set is a map where each value is null.
 template<class Key, class Hash, class KeyEqual, class Alloc>
 struct convert<std::unordered_set<Key, Hash, KeyEqual, Alloc>> {
