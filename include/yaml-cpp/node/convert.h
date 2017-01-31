@@ -13,6 +13,7 @@
 #include <list>
 #include <map>
 #include <sstream>
+#include <unordered_map>
 #include <vector>
 
 #include "yaml-cpp/binary.h"
@@ -185,6 +186,35 @@ struct convert<std::map<K, V>> {
 #else
       rhs[it->first.as<K>()] = it->second.as<V>();
 #endif
+    return true;
+  }
+};
+
+// std::unordered_map
+template <class Key, class T, class Hash, class KeyEqual, class Alloc>
+struct convert<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> {
+  
+  using value_type = std::unordered_map<Key, T, Hash, KeyEqual, Alloc>;
+
+  static Node encode(const value_type& rhs) {
+    Node node(NodeType::Map);
+    for (const auto& kv : rhs) node.force_insert(kv.first, kv.second);
+    return node;
+  }
+
+  static bool decode(const Node& node, value_type& rhs) {
+    if (!node.IsMap())
+      return false;
+
+    rhs.clear();
+    for (const auto& kv : node) {
+#if defined(__GNUC__) && __GNUC__ < 4
+      // workaround for GCC 3:
+      rhs[kv.first.template as<Key>()] = kv.second.template as<T>();
+#else
+      rhs[kv.first.as<Key>()] = kv.second.as<T>();
+#endif
+    }
     return true;
   }
 };
