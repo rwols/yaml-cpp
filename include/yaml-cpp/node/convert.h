@@ -162,17 +162,17 @@ struct convert<bool> {
 };
 
 // std::map
-template <typename K, typename V>
-struct convert<std::map<K, V>> {
-  static Node encode(const std::map<K, V>& rhs) {
+template <typename Key, typename T, typename Compare, typename Alloc>
+struct convert<std::map<Key, T, Compare, Alloc>> {
+  static Node encode(const std::map<Key, T, Compare, Alloc>& rhs) {
     Node node(NodeType::Map);
-    for (typename std::map<K, V>::const_iterator it = rhs.begin();
-         it != rhs.end(); ++it)
+    for (typename std::map<Key, T, Compare, Alloc>::const_iterator 
+         it = rhs.begin(); it != rhs.end(); ++it)
       node.force_insert(it->first, it->second);
     return node;
   }
 
-  static bool decode(const Node& node, std::map<K, V>& rhs) {
+  static bool decode(const Node& node, std::map<Key, T, Compare, Alloc>& rhs) {
     if (!node.IsMap())
       return false;
 
@@ -180,26 +180,26 @@ struct convert<std::map<K, V>> {
     for (const_iterator it = node.begin(); it != node.end(); ++it)
 #if defined(__GNUC__) && __GNUC__ < 4
       // workaround for GCC 3:
-      rhs[it->first.template as<K>()] = it->second.template as<V>();
+      rhs[it->first.template as<Key>()] = it->second.template as<T>();
 #else
-      rhs[it->first.as<K>()] = it->second.as<V>();
+      rhs[it->first.as<Key>()] = it->second.as<T>();
 #endif
     return true;
   }
 };
 
 // std::vector
-template <typename T>
-struct convert<std::vector<T>> {
-  static Node encode(const std::vector<T>& rhs) {
+template <typename T, typename Alloc>
+struct convert<std::vector<T, Alloc>> {
+  static Node encode(const std::vector<T, Alloc>& rhs) {
     Node node(NodeType::Sequence);
-    for (typename std::vector<T>::const_iterator it = rhs.begin();
+    for (typename std::vector<T, Alloc>::const_iterator it = rhs.begin();
          it != rhs.end(); ++it)
       node.push_back(*it);
     return node;
   }
 
-  static bool decode(const Node& node, std::vector<T>& rhs) {
+  static bool decode(const Node& node, std::vector<T, Alloc>& rhs) {
     if (!node.IsSequence())
       return false;
 
@@ -216,17 +216,17 @@ struct convert<std::vector<T>> {
 };
 
 // std::list
-template <typename T>
-struct convert<std::list<T>> {
-  static Node encode(const std::list<T>& rhs) {
+template <typename T, typename Alloc>
+struct convert<std::list<T, Alloc>> {
+  static Node encode(const std::list<T, Alloc>& rhs) {
     Node node(NodeType::Sequence);
-    for (typename std::list<T>::const_iterator it = rhs.begin();
+    for (typename std::list<T, Alloc>::const_iterator it = rhs.begin();
          it != rhs.end(); ++it)
       node.push_back(*it);
     return node;
   }
 
-  static bool decode(const Node& node, std::list<T>& rhs) {
+  static bool decode(const Node& node, std::list<T, Alloc>& rhs) {
     if (!node.IsSequence())
       return false;
 
