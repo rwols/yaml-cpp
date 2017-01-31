@@ -457,6 +457,37 @@ struct convert<std::pair<T, U>> {
   }
 };
 
+// std::multimap
+// A multimap is a sequence of (sorted) key-value pairs.
+template<class Key, class T, class Compare, class Alloc>
+struct convert<std::multimap<Key, T, Compare, Alloc>> {
+
+  using value_type = std::multimap<Key, T, Compare, Alloc>;
+
+  static Node encode(const value_type& rhs) {
+    Node node(NodeType::Sequence);
+    for (const auto& kv : rhs) {
+      node.push_back(std::make_pair(kv.first, kv.second));
+    }
+    return node;
+  }
+
+  static bool decode(const Node& node, value_type& rhs) {
+    if (!node.IsSequence())
+      return false;
+
+    rhs.clear();
+    for (const auto& item : node)
+#if defined(__GNUC__) && __GNUC__ < 4
+      // workaround for GCC 3:
+      rhs.insert(item.template as<std::pair<Key, T>>());
+#else
+      rhs.insert(item.as<std::pair<Key, T>>());
+#endif
+    return true;
+  }
+};
+
 // binary
 template <>
 struct convert<Binary> {

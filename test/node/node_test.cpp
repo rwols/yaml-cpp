@@ -281,6 +281,25 @@ TEST(NodeTest, StdUnorderedMap) {
   EXPECT_EQ(squares, actualSquares);
 }
 
+TEST(NodeTest, StdMultiMap) {
+  std::multimap<std::string, std::string> surnames2firstnames;
+  surnames2firstnames.emplace("Wilson", "Bilson");
+  surnames2firstnames.emplace("Wilson", "Brad");
+  surnames2firstnames.emplace("Wilson", "Amanda");
+  surnames2firstnames.emplace("Smith", "Agent");
+  surnames2firstnames.emplace("Smith", "John");
+  surnames2firstnames.emplace("Doe", "John");
+  surnames2firstnames.emplace("Doe", "Kate");
+
+  Node node;
+  node["surnames2firstnames"] = surnames2firstnames;
+  
+  const auto actual = node["surnames2firstnames"]
+    .as<std::multimap<std::string, std::string>>();
+
+  EXPECT_EQ(surnames2firstnames, actual);
+}
+
 TEST(NodeTest, StdSet) {
   std::set<int> primes;
   primes.insert(0);
