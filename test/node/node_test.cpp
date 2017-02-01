@@ -347,6 +347,54 @@ TEST(NodeTest, StdUnorderedSet) {
   EXPECT_EQ(primes, actualPrimes);
 }
 
+TEST(NodeTest, StdBitset) {
+  std::bitset<8> bits;
+  bits.set(0, true);
+  bits.set(1, true);
+  bits.set(2, false);
+  bits.set(3, true);
+  bits.set(4, true);
+  bits.set(5, false);
+  bits.set(6, false);
+  bits.set(7, false);
+
+  Node node;
+  node["bits"] = bits;
+  const auto actual = node["bits"].as<std::bitset<8>>();
+  EXPECT_EQ(bits, actual);
+}
+
+TEST(NodeTest, StdBitsetWrongSize) {
+  std::bitset<8> bits;
+  bits.set(0, true);
+  bits.set(1, true);
+  bits.set(2, false);
+  bits.set(3, true);
+  bits.set(4, true);
+  bits.set(5, false);
+  bits.set(6, false);
+  bits.set(7, false);
+
+  Node node;
+  node["bits"] = bits;
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node["bits"].as<std::bitset<1>>()), ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node["bits"].as<std::bitset<2>>()), ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node["bits"].as<std::bitset<3>>()), ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node["bits"].as<std::bitset<4>>()), ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node["bits"].as<std::bitset<5>>()), ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node["bits"].as<std::bitset<6>>()), ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node["bits"].as<std::bitset<7>>()), ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node["bits"].as<std::bitset<9>>()), ErrorMsg::BAD_CONVERSION);
+}
+
 TEST(NodeTest, StdPair) {
   std::pair<int, std::string> p;
   p.first = 5;
