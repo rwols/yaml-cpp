@@ -1,10 +1,10 @@
 #include "yaml-cpp/emitter.h"
-#include "yaml-cpp/node/emit.h"
-#include "yaml-cpp/node/node.h"
-#include "yaml-cpp/node/impl.h"
 #include "yaml-cpp/node/convert.h"
-#include "yaml-cpp/node/iterator.h"
 #include "yaml-cpp/node/detail/impl.h"
+#include "yaml-cpp/node/emit.h"
+#include "yaml-cpp/node/impl.h"
+#include "yaml-cpp/node/iterator.h"
+#include "yaml-cpp/node/node.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -283,49 +283,51 @@ TEST(NodeTest, StdUnorderedMap) {
 
 TEST(NodeTest, StdMultiMap) {
   std::multimap<std::string, std::string> surnames2firstnames;
-  surnames2firstnames.emplace("Wilson", "Bilson");
-  surnames2firstnames.emplace("Wilson", "Brad");
-  surnames2firstnames.emplace("Wilson", "Amanda");
-  surnames2firstnames.emplace("Smith", "Agent");
-  surnames2firstnames.emplace("Smith", "John");
-  surnames2firstnames.emplace("Doe", "John");
-  surnames2firstnames.emplace("Doe", "Kate");
+  surnames2firstnames.insert(std::make_pair("Wilson", "Bilson"));
+  surnames2firstnames.insert(std::make_pair("Wilson", "Brad"));
+  surnames2firstnames.insert(std::make_pair("Wilson", "Amanda"));
+  surnames2firstnames.insert(std::make_pair("Smith", "Agent"));
+  surnames2firstnames.insert(std::make_pair("Smith", "John"));
+  surnames2firstnames.insert(std::make_pair("Doe", "John"));
+  surnames2firstnames.insert(std::make_pair("Doe", "Kate"));
 
   Node node;
   node["surnames2firstnames"] = surnames2firstnames;
-  
-  const auto actual = node["surnames2firstnames"]
-    .as<std::multimap<std::string, std::string>>();
+
+  const auto actual =
+      node["surnames2firstnames"].as<std::multimap<std::string, std::string>>();
 
   EXPECT_EQ(surnames2firstnames, actual);
 }
 
 TEST(NodeTest, StdUnorderedMultiMap) {
   std::unordered_multimap<std::string, std::string> surnames2firstnames;
-  surnames2firstnames.emplace("Wilson", "Bilson");
-  surnames2firstnames.emplace("Wilson", "Brad");
-  surnames2firstnames.emplace("Wilson", "Amanda");
-  surnames2firstnames.emplace("Smith", "Agent");
-  surnames2firstnames.emplace("Smith", "John");
-  surnames2firstnames.emplace("Doe", "John");
-  surnames2firstnames.emplace("Doe", "Kate");
+  surnames2firstnames.insert(std::make_pair("Wilson", "Bilson"));
+  surnames2firstnames.insert(std::make_pair("Wilson", "Brad"));
+  surnames2firstnames.insert(std::make_pair("Wilson", "Amanda"));
+  surnames2firstnames.insert(std::make_pair("Smith", "Agent"));
+  surnames2firstnames.insert(std::make_pair("Smith", "John"));
+  surnames2firstnames.insert(std::make_pair("Doe", "John"));
+  surnames2firstnames.insert(std::make_pair("Doe", "Kate"));
 
   Node node;
   node["surnames2firstnames"] = surnames2firstnames;
-  
-  const auto actual = node["surnames2firstnames"]
-    .as<std::unordered_multimap<std::string, std::string>>();
+
+  const auto actual =
+      node["surnames2firstnames"]
+          .as<std::unordered_multimap<std::string, std::string>>();
 
   EXPECT_EQ(surnames2firstnames, actual);
 }
 
 TEST(NodeTest, StdSet) {
   std::set<int> primes;
-  primes.insert(0);
-  primes.insert(1);
-  primes.insert(4);
-  primes.insert(9);
-  primes.insert(16);
+  primes.insert(2);
+  primes.insert(3);
+  primes.insert(5);
+  primes.insert(7);
+  primes.insert(11);
+  primes.insert(13);
 
   Node node;
   node["primes"] = primes;
@@ -377,22 +379,35 @@ TEST(NodeTest, StdBitsetWrongSize) {
 
   Node node;
   node["bits"] = bits;
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node["bits"].as<std::bitset<1>>()),
+                                        ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node["bits"].as<std::bitset<2>>()),
+                                        ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node["bits"].as<std::bitset<3>>()),
+                                        ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node["bits"].as<std::bitset<4>>()),
+                                        ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node["bits"].as<std::bitset<5>>()),
+                                        ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node["bits"].as<std::bitset<6>>()),
+                                        ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node["bits"].as<std::bitset<7>>()),
+                                        ErrorMsg::BAD_CONVERSION);
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node["bits"].as<std::bitset<9>>()),
+                                        ErrorMsg::BAD_CONVERSION);
+}
+
+TEST(NodeTest, StdBitsetWrongRepresentation) {
+  const std::string representation =
+      "0011"
+      "1000"
+      "1101"
+      "x000";  // 16 bits, note the wrong character 'x' here
+  Node node;
+  node["not_really_bits"] = representation;
   EXPECT_THROW_REPRESENTATION_EXCEPTION(
-      (node["bits"].as<std::bitset<1>>()), ErrorMsg::BAD_CONVERSION);
-  EXPECT_THROW_REPRESENTATION_EXCEPTION(
-      (node["bits"].as<std::bitset<2>>()), ErrorMsg::BAD_CONVERSION);
-  EXPECT_THROW_REPRESENTATION_EXCEPTION(
-      (node["bits"].as<std::bitset<3>>()), ErrorMsg::BAD_CONVERSION);
-  EXPECT_THROW_REPRESENTATION_EXCEPTION(
-      (node["bits"].as<std::bitset<4>>()), ErrorMsg::BAD_CONVERSION);
-  EXPECT_THROW_REPRESENTATION_EXCEPTION(
-      (node["bits"].as<std::bitset<5>>()), ErrorMsg::BAD_CONVERSION);
-  EXPECT_THROW_REPRESENTATION_EXCEPTION(
-      (node["bits"].as<std::bitset<6>>()), ErrorMsg::BAD_CONVERSION);
-  EXPECT_THROW_REPRESENTATION_EXCEPTION(
-      (node["bits"].as<std::bitset<7>>()), ErrorMsg::BAD_CONVERSION);
-  EXPECT_THROW_REPRESENTATION_EXCEPTION(
-      (node["bits"].as<std::bitset<9>>()), ErrorMsg::BAD_CONVERSION);
+      (node["not_really_bits"].as<std::bitset<16>>()),
+      ErrorMsg::BAD_CONVERSION);
 }
 
 TEST(NodeTest, StdPair) {

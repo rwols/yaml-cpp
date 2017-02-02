@@ -82,7 +82,7 @@ struct convert<const char*> {
 
 template <std::size_t N>
 struct convert<const char[N]> {
-  static Node encode(const char(&rhs)[N]) { return Node(rhs); }
+  static Node encode(const char (&rhs)[N]) { return Node(rhs); }
 };
 
 template <>
@@ -167,195 +167,118 @@ struct convert<bool> {
   YAML_CPP_API static bool decode(const Node& node, bool& rhs);
 };
 
-template <class T> class node_push_backer
-{
- private:
-  Node* m_node;
-
- public:
-  typedef void value_type;
-  typedef void difference_type;
-  typedef void pointer;
-  typedef void reference;
-  typedef std::output_iterator_tag iterator_category;
-
-  explicit node_push_backer(Node& node) : m_node(&node) {}
-
-  node_push_backer& operator=(const T& t)
-  {
-      m_node->push_back(t);
-      return *this;
-  }
-
-  node_push_backer& operator*()     { return *this; }
-  node_push_backer& operator++()    { return *this; }
-  node_push_backer  operator++(int) { return *this; }
-};
-
-template <class Container> class push_back_iterator {
- private:
-  Container* m_c;
-
- public:
-  typedef void value_type;
-  typedef void difference_type;
-  typedef void pointer;
-  typedef void reference;
-  typedef std::output_iterator_tag iterator_category;
-
-  push_back_iterator(Container& container) : m_c(&container) {}
-
-  push_back_iterator& operator=(const Node& node)
-  {
-#if defined(__GNUC__) && __GNUC__ < 4
-      // workaround for GCC 3:
-      m_c->push_back(node.template as<typename Container::value_type>());
-#else
-      m_c->push_back(node.as<typename Container::value_type>());
-#endif
-      return *this;
-  }
-
-  push_back_iterator& operator*()     { return *this; }
-  push_back_iterator& operator++()    { return *this; }
-  push_back_iterator  operator++(int) { return *this; }
-};
-
-template <class Container> 
-push_back_iterator<Container> push_backer(Container& container)
-{
-  return push_back_iterator<Container>(container);
-}
-
-template <
-  class Key, 
-  class T, 
-  class ContainerValueType = std::pair<const Key, T>
-> class node_inserter
-{
- private:
-  Node* m_node;
-
- public:
-  typedef void value_type;
-  typedef void difference_type;
-  typedef void pointer;
-  typedef void reference;
-  typedef std::output_iterator_tag iterator_category;
-
-  explicit node_inserter(Node& node) : m_node(&node) {}
-
-  node_inserter& operator=(const ContainerValueType& t)
-  {
-      m_node->force_insert(t.first, t.second);
-      return *this;
-  }
-
-  node_inserter& operator*()     { return *this; }
-  node_inserter& operator++()    { return *this; }
-  node_inserter  operator++(int) { return *this; }
-};
-
-template <class T> struct convert_as_sequence
-{
-  static Node encode(const T& sequence)
-  {
+// Helper class for converting something which is "sequence-like" to and from a
+// Node.
+template <class T>
+struct convert_as_sequence {
+  static Node encode(const T& sequence) {
     Node node(NodeType::Sequence);
-    
-    std::copy(sequence.begin(), sequence.end(), 
-      node_push_backer<typename T::value_type>(node));
-
+    for (const auto& item : sequence)
+      node.push_back(item);
     return node;
   }
-  static bool decode(const Node& node, T& sequence)
-  {
+  static bool decode(const Node& node, T& sequence) {
     if (!node.IsSequence())
       return false;
     sequence.clear();
-    std::copy(node.begin(), node.end(), push_backer(sequence));
+    for (const auto& item : node)
+      sequence.push_back(item.template as<typename T::value_type>());
     return true;
   }
 };
 
-template <
-  class T, 
-  class Key = typename T::key_type, 
-  class Value = typename T::mapped_type> 
-struct convert_as_map
-{
+// Helper class for converting something which is "map-like" to and from a Node.
+template <class T, class Key = typename T::key_type,
+          class Value = typename T::mapped_type>
+struct convert_as_map {
   static Node encode(const T& map) {
     Node node(NodeType::Map);
-    std::copy(map.begin(), map.end(), node_inserter<Key, Value>(node));
+    for (const auto& kv : map)
+      node.force_insert(kv.first, kv.second);
     return node;
   }
 
-  static bool decode(const Node& node, T& map)
-  {
+  static bool decode(const Node& node, T& map) {
     if (!node.IsMap())
       return false;
     map.clear();
-    for (const auto& kv : node)
-    {
+    for (const auto& kv : node) {
+// if we're dealing with GCC (note: clang also defines __GNUC__)
+#if defined(__GNUC__)
+#if __GNUC__ < 4
+      // gcc version < 4
+      map.insert(std::make_pair(kv.first.template as<Key>(),
+                                kv.second.template as<Value>()));
+#elif __GNUC__ == 4 && __GNUC_MINOR__ < 8
+      // 4.0 <= gcc version < 4.8
+      map.insert(std::make_pair(kv.first.as<Key>(), kv.second.as<Value>()));
+#else
+      // 4.8 <= gcc version
+      map.emplace(kv.first.as<Key>(), kv.second.as<Value>());
+#endif  // __GNUC__ < 4
+#else
+      // for anything not GCC or clang...
+      // probably some more #ifdef guards are needed for MSVC.
+      map.emplace(kv.first.as<Key>(), kv.second.as<Value>());
+#endif  // defined(__GNUC__)
+    }
+    return true;
+  }
+};
+
+// Helper class for converting something which is "set-like" to and from a Node.
+// A set is realized as a yaml sequence.
+template <class T>
+struct convert_as_set {
+  static Node encode(const T& set) {
+    Node node(NodeType::Sequence);
+    for (const auto& item : set)
+      node.push_back(item);
+    return node;
+  }
+
+  static bool decode(const Node& node, T& set) {
+    if (!node.IsSequence())
+      return false;
+
+    set.clear();
+    for (const auto& item : node) {
+
 #if defined(__GNUC__) && __GNUC__ < 4
       // workaround for GCC 3:
-      map.emplace(kv.first.template as<Key>(), kv.second.template as<Value>());
-#else
-      map.emplace(kv.first.as<Key>(), kv.second.as<Value>());
+      set.insert(item.template as<typename T::value_type>());
+#else  // __GNUC__ is not defined or __GNUC__ >= 4
+      set.insert(item.as<typename T::value_type>());
 #endif
     }
     return true;
   }
 };
 
-// A set is a map where each value is null.
+// Helper class for converting something which is "multimap-like" to and from a
+// Node. A multimap is realized as a yaml sequence of key-value pairs.
 template <class T>
-struct convert_as_set
-{
-  static Node encode(const T& rhs) {
-    Node node(NodeType::Map);
-    for (const auto& item : rhs) node.force_insert(item, Null);
-    return node;
-  }
-
-  static bool decode(const Node& node, T& rhs) {
-    if (!node.IsMap())
-      return false;
-
-    rhs.clear();
-    for (const auto& kv : node)
-#if defined(__GNUC__) && __GNUC__ < 4
-      // workaround for GCC 3:
-      rhs.insert(kv.first.template as<typename T::value_type>());
-#else
-      rhs.insert(kv.first.as<typename T::value_type>());
-#endif
-    return true;
-  }
-};
-
-// A multimap is a sequence of (sorted) key-value pairs.
-template <class T>
-struct convert_as_multimap
-{
-  static Node encode(const T& rhs) {
+struct convert_as_multimap {
+  static Node encode(const T& map) {
     Node node(NodeType::Sequence);
-    std::copy(rhs.begin(), rhs.end(), 
-      node_push_backer<typename T::value_type>(node));
+    for (const auto& kv : map)
+      node.push_back(kv);
     return node;
   }
 
-  static bool decode(const Node& node, T& rhs) {
+  static bool decode(const Node& node, T& map) {
     if (!node.IsSequence())
       return false;
 
-    rhs.clear();
-    for (const auto& item : node)
-    {
+    map.clear();
+    for (const auto& item : node) {
 #if defined(__GNUC__) && __GNUC__ < 4
       // workaround for GCC 3:
-      rhs.insert(item.template as<std::pair<typename T::key_type, typename T::mapped_type>>());
-#else
-      rhs.insert(item.as<std::pair<typename T::key_type, typename T::mapped_type>>());
+      map.insert(item.template as<
+                 std::pair<typename T::key_type, typename T::mapped_type>>());
+#else  // __GNUC__ is not defined or __GNUC__ >= 4
+      map.insert(
+          item.as<std::pair<typename T::key_type, typename T::mapped_type>>());
 #endif
     }
     return true;
@@ -363,74 +286,76 @@ struct convert_as_multimap
 };
 
 // std::vector
-template <typename T>
-struct convert<std::vector<T>> 
-: public convert_as_sequence<std::vector<T>> {};
+template <typename T, class Alloc>
+struct convert<std::vector<T, Alloc>>
+    : public convert_as_sequence<std::vector<T, Alloc>> {};
 
 // std::deque
 template <class T, class Alloc>
-struct convert<std::deque<T, Alloc>> 
-: public convert_as_sequence<std::deque<T, Alloc>> {};
+struct convert<std::deque<T, Alloc>>
+    : public convert_as_sequence<std::deque<T, Alloc>> {};
 
 // std::list
-template <typename T>
-struct convert<std::list<T>> 
-: public convert_as_sequence<std::list<T>> {};
+template <typename T, class Alloc>
+struct convert<std::list<T, Alloc>>
+    : public convert_as_sequence<std::list<T, Alloc>> {};
 
 // std::map
 template <class Key, class T, class Compare, class Alloc>
-struct convert<std::map<Key ,T, Compare, Alloc>>
-: public convert_as_map<std::map<Key ,T, Compare, Alloc>> {};
+struct convert<std::map<Key, T, Compare, Alloc>>
+    : public convert_as_map<std::map<Key, T, Compare, Alloc>> {};
 
 // std::unordered_map
 template <class Key, class T, class Hash, class KeyEqual, class Alloc>
 struct convert<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>>
-: public convert_as_map<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> {};
+    : public convert_as_map<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> {
+};
 
 // std::multimap
-template<class Key, class T, class Compare, class Alloc>
+template <class Key, class T, class Compare, class Alloc>
 struct convert<std::multimap<Key, T, Compare, Alloc>>
-: public convert_as_multimap<std::multimap<Key, T, Compare, Alloc>> {};
+    : public convert_as_multimap<std::multimap<Key, T, Compare, Alloc>> {};
 
 // std::unordered_multimap
 template <class Key, class T, class Hash, class KeyEqual, class Alloc>
 struct convert<std::unordered_multimap<Key, T, Hash, KeyEqual, Alloc>>
-: public convert_as_multimap<std::unordered_multimap<Key, T, Hash, KeyEqual, Alloc>> {};
+    : public convert_as_multimap<
+          std::unordered_multimap<Key, T, Hash, KeyEqual, Alloc>> {};
 
 // std::set
 template <class Key, class Compare, class Alloc>
 struct convert<std::set<Key, Compare, Alloc>>
-: public convert_as_set<std::set<Key, Compare, Alloc>> {};
+    : public convert_as_set<std::set<Key, Compare, Alloc>> {};
 
 // std::unordered_set
-template<class Key, class Hash, class KeyEqual, class Alloc>
+template <class Key, class Hash, class KeyEqual, class Alloc>
 struct convert<std::unordered_set<Key, Hash, KeyEqual, Alloc>>
-: public convert_as_set<std::unordered_set<Key, Hash, KeyEqual, Alloc>> {};
+    : public convert_as_set<std::unordered_set<Key, Hash, KeyEqual, Alloc>> {};
 
 // std::forward_list
 template <class T, class Alloc>
 struct convert<std::forward_list<T, Alloc>> {
-  static Node encode(const std::forward_list<T, Alloc>& rhs) {
+  static Node encode(const std::forward_list<T, Alloc>& sequence) {
     Node node(NodeType::Sequence);
-    std::copy(rhs.begin(), rhs.end(), node_push_backer<T>(node));
+    for (const auto& item : sequence)
+      node.push_back(item);
     return node;
   }
 
-  static bool decode(const Node& node, std::forward_list<T, Alloc>& rhs) {
+  static bool decode(const Node& node, std::forward_list<T, Alloc>& sequence) {
     if (!node.IsSequence())
       return false;
 
-    rhs.clear();
+    sequence.clear();
 
-    // Walk the sequence backwards, because std::forward_list does not have
+    // Walk the node backwards, because std::forward_list does not have
     // push_back, only push_front.
-    for (std::size_t i = node.size() - 1; i != (std::size_t)-1; --i)
-    {
+    for (std::size_t i = node.size() - 1; i != (std::size_t)-1; --i) {
 #if defined(__GNUC__) && __GNUC__ < 4
       // workaround for GCC 3:
-      rhs.push_front(node[i].template as<T>());
+      sequence.push_front(node[i].template as<T>());
 #else
-      rhs.push_front(node[i].as<T>());
+      sequence.push_front(node[i].as<T>());
 #endif
     }
     return true;
@@ -440,13 +365,14 @@ struct convert<std::forward_list<T, Alloc>> {
 // std::array
 template <typename T, std::size_t N>
 struct convert<std::array<T, N>> {
-  static Node encode(const std::array<T, N>& rhs) {
+  static Node encode(const std::array<T, N>& sequence) {
     Node node(NodeType::Sequence);
-    std::copy(rhs.begin(), rhs.end(), node_push_backer<T>(node));
+    for (const auto& item : sequence)
+      node.push_back(item);
     return node;
   }
 
-  static bool decode(const Node& node, std::array<T, N>& rhs) {
+  static bool decode(const Node& node, std::array<T, N>& sequence) {
     if (!isNodeValid(node)) {
       return false;
     }
@@ -454,9 +380,9 @@ struct convert<std::array<T, N>> {
     for (auto i = 0u; i < node.size(); ++i) {
 #if defined(__GNUC__) && __GNUC__ < 4
       // workaround for GCC 3:
-      rhs[i] = node[i].template as<T>();
+      sequence[i] = node[i].template as<T>();
 #else
-      rhs[i] = node[i].as<T>();
+      sequence[i] = node[i].as<T>();
 #endif
     }
     return true;
@@ -470,21 +396,27 @@ struct convert<std::array<T, N>> {
 
 // std::bitset
 template <std::size_t N>
-struct convert<std::bitset<N>>
-{
+struct convert<std::bitset<N>> {
   using value_type = std::bitset<N>;
-  
-  static Node encode(const value_type& rhs)
-  {
+
+  static Node encode(const value_type& rhs) {
     return convert<std::string>::encode(rhs.to_string());
   }
 
-  static bool decode(const Node& node, value_type& rhs)
-  {
+  static bool decode(const Node& node, value_type& rhs) {
     std::string representation;
-    if (!convert<std::string>::decode(node, representation)) return false;
-    if (representation.size() != N) return false;
-    rhs = value_type(representation);
+
+    if (!convert<std::string>::decode(node, representation))
+      return false;
+    if (representation.size() != N)
+      return false;
+    try {
+      // bitset constructor will throw std:invalid_argument if the decoded
+      // string contains characters other than 0 and 1.
+      rhs = value_type(representation);
+    } catch (const std::invalid_argument& /*error*/) {
+      return false;
+    }
     return true;
   }
 };
