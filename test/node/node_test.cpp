@@ -410,6 +410,129 @@ TEST(NodeTest, StdBitsetWrongRepresentation) {
       ErrorMsg::BAD_CONVERSION);
 }
 
+TEST(NodeTest, ConversionsBetweenSequences) {
+  const std::vector<int> primesAsVec{2, 3, 5, 7, 11, 13};
+
+  const auto node = Node(primesAsVec);
+
+  // should succeed -- yaml-cpp doesn't care what kind of underlying sequence
+  // type it was.
+  const auto primesAsDeque = node.as<std::deque<int>>();
+  const auto primesAsList = node.as<std::list<int>>();
+  const auto primesAsForwardList = node.as<std::forward_list<int>>();
+
+  EXPECT_EQ(primesAsVec.size(), primesAsDeque.size());
+  EXPECT_EQ(primesAsVec.size(), primesAsList.size());
+  // note: std::forward_list doesn't have a size() method!
+
+  auto iter0 = primesAsVec.begin();
+  auto iter1 = primesAsDeque.begin();
+  auto iter2 = primesAsList.begin();
+  auto iter3 = primesAsForwardList.begin();
+  while (iter0 != primesAsVec.end() && iter1 != primesAsDeque.end() &&
+         iter2 != primesAsList.end() && iter3 != primesAsForwardList.end()) {
+    EXPECT_EQ(*iter0, *iter1);
+    EXPECT_EQ(*iter0, *iter2);
+    EXPECT_EQ(*iter0, *iter3);
+    ++iter0;
+    ++iter1;
+    ++iter2;
+    ++iter3;
+  }
+
+  // should fail -- a yaml sequence is not a yaml map.
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node.as<std::map<int, int>>()),
+                                        ErrorMsg::BAD_CONVERSION);
+
+  // should fail -- while a multimap is realized as a sequence, its elements
+  // are pairs which cannot be converted to integers.
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node.as<std::multimap<int, int>>()),
+                                        ErrorMsg::BAD_CONVERSION);
+
+  // should succeed -- yaml doesn't know the difference between int and float.
+  const auto primesAsFloats = node.as<std::vector<float>>();
+  for (std::size_t i = 0; i != primesAsVec.size(); ++i) {
+    EXPECT_FLOAT_EQ((static_cast<float>(primesAsVec[i])), primesAsFloats[i]);
+  }
+
+  // should succeed -- an std::set is considered a yaml sequence
+  const auto primesAsSet = node.as<std::set<unsigned>>();
+  EXPECT_EQ(primesAsSet.size(), primesAsVec.size());
+
+  for (const auto prime : primesAsVec) {
+    EXPECT_NE(primesAsSet.find(prime), primesAsSet.end());
+  }
+}
+
+TEST(NodeTest, ConvolutedWayToRemoveDuplicates) {
+
+  const std::vector<int> withDuplicates{1, 5, 3, 6, 4, 7, 5, 3, 3, 4, 5,
+                                        5, 3, 2, 7, 8, 9, 9, 9, 5, 2, 0};
+
+  const auto node = Node(withDuplicates);
+
+  // should succeed -- an std::set is considered a yaml sequence
+  const auto withoutDuplicatesAndSorted = node.as<std::set<int>>();
+
+  EXPECT_EQ(withoutDuplicatesAndSorted.size(), 10);
+  std::size_t i = 0;
+  for (const auto digit : withoutDuplicatesAndSorted) {
+    EXPECT_EQ(digit, i);
+    ++i;
+  }
+  EXPECT_EQ(i, 10);
+}
+
+TEST(NodeTest, ConversionsBetweenMaps) {
+  std::map<std::string, std::vector<std::string>> typeSafeTravisFile{
+      {"language", {"c++"}},
+      {"os", {"linux", "osx"}},
+      {"compiler", {"clang", "gcc"}},
+      {"before_install", {"do some stuff", "do some more stuff"}},
+      {"before_script", {"mkdir build", "cd build", "cmake .."}},
+      {"script", {"make", "test/run-tests"}}};
+
+  const auto node = Node(typeSafeTravisFile);
+
+  // should succeed -- precisely two values in the sequence
+  const auto os = node["os"].as<std::pair<std::string, std::string>>();
+  EXPECT_EQ(os.first, "linux");
+  EXPECT_EQ(os.second, "osx");
+
+  // should succeed -- yaml doesn't know the difference between ordered and
+  // unordered.
+  const auto travisFileHash =
+      node.as<std::unordered_map<std::string, std::vector<std::string>>>();
+  EXPECT_NE(travisFileHash.find("language"), travisFileHash.end());
+  EXPECT_NE(travisFileHash.find("os"), travisFileHash.end());
+  EXPECT_NE(travisFileHash.find("compiler"), travisFileHash.end());
+  EXPECT_NE(travisFileHash.find("before_install"), travisFileHash.end());
+  EXPECT_NE(travisFileHash.find("before_script"), travisFileHash.end());
+  EXPECT_NE(travisFileHash.find("script"), travisFileHash.end());
+
+  // should fail -- a yaml map is not a yaml sequence
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node.as<  // looks structurally somewhat like a map
+          std::vector<std::pair<std::string, std::vector<std::string>>>>()),
+      ErrorMsg::BAD_CONVERSION);
+
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node.as<  // looks structurally somewhat like a map
+          std::deque<std::pair<std::string, std::deque<std::string>>>>()),
+      ErrorMsg::BAD_CONVERSION);
+
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node.as<  // looks structurally somewhat like a map
+          std::list<std::pair<std::string, std::list<std::string>>>>()),
+      ErrorMsg::BAD_CONVERSION);
+
+  EXPECT_THROW_REPRESENTATION_EXCEPTION(
+      (node.as<  // looks structurally somewhat like a map
+          std::forward_list<
+              std::pair<std::string, std::forward_list<std::string>>>>()),
+      ErrorMsg::BAD_CONVERSION);
+}
+
 TEST(NodeTest, StdPair) {
   std::pair<int, std::string> p;
   p.first = 5;
@@ -420,6 +543,16 @@ TEST(NodeTest, StdPair) {
   std::pair<int, std::string> actualP =
       node["pair"].as<std::pair<int, std::string>>();
   EXPECT_EQ(p, actualP);
+}
+
+TEST(NodeTest, StdPairFailure) {
+  std::vector<int> triple{1, 2, 3};
+  const auto node = Node(triple);
+
+  // should fail -- an std::pair needs a sequence of length exactly 2, while
+  // the Node holds a sequence of length exactly 3.
+  EXPECT_THROW_REPRESENTATION_EXCEPTION((node.as<std::pair<int, int>>()),
+                                        ErrorMsg::BAD_CONVERSION);
 }
 
 TEST(NodeTest, SimpleAlias) {
