@@ -14,9 +14,11 @@
 #include <list>
 #include <map>
 #include <set>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <yaml-cpp/detail/all_true.h>
 #include <yaml-cpp/detail/has_left_shift.h>
 
 namespace YAML {
@@ -41,6 +43,9 @@ struct IsOutputPrimitive {
                                 IsOutputSequence<T>::value ||
                                 IsOutputMap<T>::value;
 };
+
+template <class... Ts>
+using AllOutputPrimitive = detail::all_true<IsOutputPrimitive<Ts>::value...>;
 
 // std::vector
 // is an output sequence if and only if T is a primitive.
@@ -81,24 +86,21 @@ struct IsOutputSequence<std::array<T, N>> {
 // is an output map if and only if both Key and T are primitives.
 template <class Key, class T, class Compare, class Alloc>
 struct IsOutputMap<std::map<Key, T, Compare, Alloc>> {
-  static constexpr bool value =
-      IsOutputPrimitive<Key>::value && IsOutputPrimitive<T>::value;
+  static constexpr bool value = AllOutputPrimitive<Key, T>::value;
 };
 
 // std::unordered_map
 // is an output map if and only if both Key and T are primitives.
 template <class Key, class T, class Hash, class KeyEqual, class Alloc>
 struct IsOutputMap<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> {
-  static constexpr bool value =
-      IsOutputPrimitive<Key>::value && IsOutputPrimitive<T>::value;
+  static constexpr bool value = AllOutputPrimitive<Key, T>::value;
 };
 
 // std::multimap
 // is an output sequence if and only if both Key and T are primitives.
 template <class Key, class T, class Compare, class Alloc>
 struct IsOutputSequence<std::multimap<Key, T, Compare, Alloc>> {
-  static constexpr bool value =
-      IsOutputPrimitive<Key>::value && IsOutputPrimitive<T>::value;
+  static constexpr bool value = AllOutputPrimitive<Key, T>::value;
 };
 
 // std::unordered_multimap
@@ -106,8 +108,7 @@ struct IsOutputSequence<std::multimap<Key, T, Compare, Alloc>> {
 template <class Key, class T, class Hash, class KeyEqual, class Alloc>
 struct IsOutputSequence<
     std::unordered_multimap<Key, T, Hash, KeyEqual, Alloc>> {
-  static constexpr bool value =
-      IsOutputPrimitive<Key>::value && IsOutputPrimitive<T>::value;
+  static constexpr bool value = AllOutputPrimitive<Key, T>::value;
 };
 
 // std::set
@@ -161,6 +162,37 @@ typename std::enable_if<IsOutputMap<T>::value, Emitter&>::type operator<<(
   for (const auto& kv : map)
     emitter << Key << kv.first << Value << kv.second;
   emitter << EndMap;
+  return emitter;
+}
+
+namespace detail {
+
+template <std::size_t Index = 0, typename... Args>
+typename std::enable_if<Index == sizeof...(Args)>::type EmitTuple(
+    Emitter& /*emitter*/, const std::tuple<Args...>& /*tup*/) {}
+
+template <std::size_t Index = 0, typename... Args>
+typename std::enable_if<Index != sizeof...(Args)>::type EmitTuple(
+    Emitter& emitter, const std::tuple<Args...>& tup) {
+  emitter << std::get<Index>(tup);
+  EmitTuple<Index + 1, Args...>(emitter, tup);
+}
+
+}  // namespace detail
+
+// std::tuple
+template <typename... Args>
+typename std::enable_if<AllOutputPrimitive<Args...>::value, Emitter&>::type
+    operator<<(Emitter& emitter, const std::tuple<Args...>& tup) {
+  emitter << BeginSeq;
+  detail::EmitTuple(emitter, tup);
+  emitter << EndSeq;
+  return emitter;
+}
+
+// std::tuple -- empty
+inline Emitter& operator<<(Emitter& emitter, const std::tuple<>& /*tup*/) {
+  emitter << Null;
   return emitter;
 }
 
