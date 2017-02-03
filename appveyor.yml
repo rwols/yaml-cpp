@@ -32,7 +32,7 @@ before_build:
 
 # What solutions to build
 build:
-  project: ALL_BUILD.vcxproj
+  project: "%PROJECT_FOLDER%/build/ALL_BUILD.vcxproj"
 
 # scripts to run after build
 after_build:
