@@ -1,3 +1,9 @@
+
+#ifdef _MSC_VER
+// silence pointless warning about names being too long
+#pragma warning(disable : 4503)
+#endif
+
 #include "yaml-cpp/yaml.h"  // IWYU pragma: keep
 
 #include "gtest/gtest.h"
