@@ -3,6 +3,11 @@
 #include "yaml-cpp/yaml.h"  // IWYU pragma: keep
 #include "gtest/gtest.h"
 
+#ifdef _MSC_VER
+// silence pointless warning about names being too long
+#pragma warning(disable : 4503)
+#endif
+
 // user-defined type for emitter
 struct Foo {
   Foo() : x(0) {}
