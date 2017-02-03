@@ -1,12 +1,13 @@
-#include "yaml-cpp/emitterstyle.h"
-#include "yaml-cpp/eventhandler.h"
-#include "yaml-cpp/yaml.h"  // IWYU pragma: keep
-#include "gtest/gtest.h"
 
 #ifdef _MSC_VER
 // silence pointless warning about names being too long
 #pragma warning(disable : 4503)
 #endif
+
+#include "yaml-cpp/emitterstyle.h"
+#include "yaml-cpp/eventhandler.h"
+#include "yaml-cpp/yaml.h"  // IWYU pragma: keep
+#include "gtest/gtest.h"
 
 // user-defined type for emitter
 struct Foo {
@@ -752,7 +753,8 @@ TEST_F(EmitterTest, StdTupleSize1) {
 }
 
 TEST_F(EmitterTest, StdTupleSize2) {
-  out << std::make_tuple(42, 3.141592f);
+  const auto tup = std::make_tuple(42, 3.141592f);
+  out << tup;
   ExpectEmit("- 42\n- 3.141592");
 }
 
