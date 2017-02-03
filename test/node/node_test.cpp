@@ -555,6 +555,76 @@ TEST(NodeTest, StdPairFailure) {
                                         ErrorMsg::BAD_CONVERSION);
 }
 
+TEST(NodeTest, StdTupleSize0) {
+  const auto expected = std::tuple<>();
+  const auto node = Node(expected);
+  const auto actual = node.as<std::tuple<>>();
+  EXPECT_EQ(expected, actual);
+  EXPECT_EQ(true, node.IsNull());
+}
+
+TEST(NodeTest, StdTupleSize1) {
+  const auto expected = std::make_tuple(42);
+  const auto node = Node(expected);
+  const auto actual = node.as<std::remove_cv<decltype(expected)>::type>();
+  EXPECT_EQ(expected, actual);
+
+  // should succeed -- tuple is realized as a yaml sequence
+  const auto vec = node.as<std::vector<int>>();
+  EXPECT_EQ(std::get<0>(expected), vec[0]);
+}
+
+TEST(NodeTest, StdTupleSize2) {
+  const auto expected = std::make_tuple(42, 3.141592f);
+  const auto node = Node(expected);
+  const auto actual = node.as<std::remove_cv<decltype(expected)>::type>();
+  EXPECT_EQ(expected, actual);
+
+  // should succeed -- tuple is realized as a yaml sequence
+  const auto vec = node.as<std::vector<float>>();
+  EXPECT_EQ(std::get<0>(expected), vec[0]);
+  EXPECT_EQ(std::get<1>(expected), vec[1]);
+
+  // should succeed -- can also be a pair in this case
+  const auto pair = node.as<std::pair<int, float>>();
+  EXPECT_EQ(std::get<0>(expected), pair.first);
+  EXPECT_EQ(std::get<1>(expected), pair.second);
+}
+
+TEST(NodeTest, StdTupleSize3) {
+  const auto expected = std::make_tuple(42, 3.141592f, std::string("hello"));
+  const auto node = Node(expected);
+  const auto actual = node.as<std::remove_cv<decltype(expected)>::type>();
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(NodeTest, StdTupleSize4) {
+  const auto expected = std::make_tuple(42, 3.141592f, std::string("hello"),
+                                        std::string("world"));
+  const auto node = Node(expected);
+  const auto actual = node.as<std::remove_cv<decltype(expected)>::type>();
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(NodeTest, StdTupleSize5) {
+  const auto expected =
+      std::make_tuple(42, 3.141592f, std::string("hello"), std::string("world"),
+                      std::vector<int>{2, 3, 5, 7});
+  const auto node = Node(expected);
+  const auto actual = node.as<std::remove_cv<decltype(expected)>::type>();
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(NodeTest, StdTupleSize6) {
+  const auto expected =
+      std::make_tuple(42, 3.141592f, std::string("hello"), std::string("world"),
+                      std::vector<int>{2, 3, 5, 7},
+                      std::map<int, int>{{1, 1}, {2, 4}, {3, 9}, {4, 16}});
+  const auto node = Node(expected);
+  const auto actual = node.as<std::remove_cv<decltype(expected)>::type>();
+  EXPECT_EQ(expected, actual);
+}
+
 TEST(NodeTest, SimpleAlias) {
   Node node;
   node["foo"] = "value";
