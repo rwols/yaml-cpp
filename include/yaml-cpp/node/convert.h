@@ -9,6 +9,7 @@
 
 #include <array>
 #include <bitset>
+#include <cassert>
 #include <deque>
 #include <forward_list>
 #include <limits>
@@ -16,8 +17,10 @@
 #include <map>
 #include <set>
 #include <sstream>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "yaml-cpp/binary.h"
@@ -421,34 +424,83 @@ struct convert<std::bitset<N>> {
   }
 };
 
-// std::pair
-template <typename T, typename U>
-struct convert<std::pair<T, U>> {
-  static Node encode(const std::pair<T, U>& rhs) {
+namespace detail {
+
+template <std::size_t Index = 0, typename... Args>
+inline typename std::enable_if<Index == sizeof...(Args), void>::type
+    encode_tuple(Node& /*node*/, const std::tuple<Args...>& /*tup*/) {}
+
+template <std::size_t Index = 0, typename... Args>
+inline typename std::enable_if<Index != sizeof...(Args), void>::type
+    encode_tuple(Node& node, const std::tuple<Args...>& tup) {
+  node.push_back(std::get<Index>(tup));
+  encode_tuple<Index + 1, Args...>(node, tup);
+}
+
+template <std::size_t Index = 0, typename... Args>
+inline typename std::enable_if<Index == sizeof...(Args), void>::type
+    decode_tuple(const Node& /*node*/, std::tuple<Args...>& /*tup*/) {}
+
+template <std::size_t Index = 0, typename... Args>
+inline typename std::enable_if<Index != sizeof...(Args), void>::type
+    decode_tuple(const Node& node, std::tuple<Args...>& tup) {
+  std::get<Index>(tup) =
+      node[Index]
+          .template as<
+              typename std::tuple_element<Index, std::tuple<Args...>>::type>();
+  decode_tuple<Index + 1, Args...>(node, tup);
+}
+
+}  // namespace detail
+
+// std::tuple
+template <typename... Args>
+struct convert<std::tuple<Args...>> {
+  static Node encode(const std::tuple<Args...>& tup) {
+    static_assert(sizeof...(Args) > 0,
+                  "wrong template specialization selected");
     Node node(NodeType::Sequence);
-    node.push_back(rhs.first);
-    node.push_back(rhs.second);
+    detail::encode_tuple(node, tup);
     return node;
   }
 
-  static bool decode(const Node& node, std::pair<T, U>& rhs) {
-    if (!node.IsSequence())
+  static bool decode(const Node& node, std::tuple<Args...>& tup) {
+    static_assert(sizeof...(Args) > 0,
+                  "wrong template specialization selected");
+    if (!node.IsSequence() || node.size() != sizeof...(Args))
       return false;
-    if (node.size() != 2)
-      return false;
+    detail::decode_tuple(node, tup);
+    // detail::convert_tuple<0, Args...>::decode(node, tup);
+    return true;
+  }
+};
 
-#if defined(__GNUC__) && __GNUC__ < 4
-    // workaround for GCC 3:
-    rhs.first = node[0].template as<T>();
-#else
-    rhs.first = node[0].as<T>();
-#endif
-#if defined(__GNUC__) && __GNUC__ < 4
-    // workaround for GCC 3:
-    rhs.second = node[1].template as<U>();
-#else
-    rhs.second = node[1].as<U>();
-#endif
+// std::tuple -- empty
+template <>
+struct convert<std::tuple<>> {
+  static Node encode(const std::tuple<>& /*tup*/) {
+    return convert<_Null>::encode(Null);
+  }
+  static bool decode(const Node& node, std::tuple<>& /*tup*/) {
+    return convert<_Null>::decode(node, Null);
+  }
+};
+
+// std::pair -- special case of std::tuple
+template <class First, class Second>
+struct convert<std::pair<First, Second>> {
+  static Node encode(const std::pair<First, Second>& tup) {
+    Node node(NodeType::Sequence);
+    node.push_back(std::get<0>(tup));
+    node.push_back(std::get<1>(tup));
+    return node;
+  }
+
+  static bool decode(const Node& node, std::pair<First, Second>& tup) {
+    if (!node.IsSequence() || node.size() != 2)
+      return false;
+    std::get<0>(tup) = node[0].template as<First>();
+    std::get<1>(tup) = node[1].template as<Second>();
     return true;
   }
 };
