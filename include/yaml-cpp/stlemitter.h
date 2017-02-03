@@ -181,9 +181,9 @@ typename std::enable_if<Index != sizeof...(Args)>::type EmitTuple(
 }  // namespace detail
 
 // std::tuple
-template <typename... Args>
-// typename std::enable_if<AllOutputPrimitive<Args...>::value, Emitter&>::type
-Emitter& operator<<(Emitter& emitter, const std::tuple<Args...>& tup) {
+template <typename... Args, typename = typename std::enable_if<
+                                AllOutputPrimitive<Args...>::value>::type>
+void Emitter& operator<<(Emitter& emitter, const std::tuple<Args...>& tup) {
   emitter << BeginSeq;
   detail::EmitTuple(emitter, tup);
   emitter << EndSeq;
