@@ -181,9 +181,19 @@ typename std::enable_if<Index != sizeof...(Args)>::type EmitTuple(
 }  // namespace detail
 
 // std::tuple
-template <typename... Args, typename = typename std::enable_if<
-                                AllOutputPrimitive<Args...>::value>::type>
-void Emitter& operator<<(Emitter& emitter, const std::tuple<Args...>& tup) {
+#ifdef _MSC_VER
+// MSVC doesn't like the variadic syntax in the return type, so we put it in the
+// template parameter list.
+template <typename... Args,
+          typename = typename std::enable_if<AllOutputPrimitive<Args...>::value,
+                                             Emitter&>::type>
+#else
+// GCC/clang don't like the variadic syntax in the parameter list, so we put it
+// in the return type.
+template <typename... Args>
+typename std::enable_if<AllOutputPrimitive<Args...>::value, Emitter&>::type
+#endif
+operator<<(Emitter& emitter, const std::tuple<Args...>& tup) {
   emitter << BeginSeq;
   detail::EmitTuple(emitter, tup);
   emitter << EndSeq;
