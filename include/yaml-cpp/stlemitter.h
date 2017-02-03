@@ -187,6 +187,7 @@ typename std::enable_if<Index != sizeof...(Args)>::type EmitTuple(
 template <typename... Args,
           typename = typename std::enable_if<AllOutputPrimitive<Args...>::value,
                                              Emitter&>::type>
+void
 #else
 // GCC/clang don't like the variadic syntax in the parameter list, so we put it
 // in the return type.
