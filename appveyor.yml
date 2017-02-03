@@ -36,8 +36,5 @@ before_build:
 build:
   project: ALL_BUILD.vcxproj
 
-# scripts to run after build
-after_build:
-  - test/Debug/run-tests.exe
-  - test/Release/run-tests.exe
-
+test_script: 
+  - ctest -V
