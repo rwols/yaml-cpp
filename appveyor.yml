@@ -16,7 +16,7 @@ init:
 
 
 # clone directory
-clone_folder: %PROJECT_FOLDER%
+clone_folder: "%PROJECT_FOLDER%"
 
 platform: x64
 configuration: Release
