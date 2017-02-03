@@ -616,7 +616,7 @@ TEST_F(EmitterTest, NestedSTLContainersPart2) {
 TEST_F(EmitterTest, NestedSTLContainersPart3) {
 
   std::map<std::string, std::pair<std::forward_list<std::bitset<2>>,
-                                  std::vector<std::deque<std::string>>>>
+                                  std::vector<std::deque<Foo>>>>
       data;
 
   std::bitset<2> bits;
@@ -626,14 +626,14 @@ TEST_F(EmitterTest, NestedSTLContainersPart3) {
   std::forward_list<std::bitset<2>> thelist;
   thelist.push_front(bits);
 
-  std::deque<std::string> thedeque;
-  thedeque.push_back("hello");
-  thedeque.push_back("world");
+  std::deque<Foo> thedeque;
+  thedeque.push_back(Foo(0, "hello"));
+  thedeque.push_back(Foo(1, "world"));
 
-  std::vector<std::deque<std::string>> thevector;
+  std::vector<std::deque<Foo>> thevector;
   thevector.push_back(thedeque);
-  thedeque[1] = "john";
-  thedeque.push_back("kate");
+  thedeque[1] = Foo(2, "john");
+  thedeque.push_back(Foo(3, "kate"));
   thevector.push_back(thedeque);
 
   data["one"] = std::make_pair(thelist, thevector);
@@ -644,9 +644,9 @@ TEST_F(EmitterTest, NestedSTLContainersPart3) {
   bits.set(1, true);
   thelist.push_front(bits);
 
-  thedeque.push_front("mary");
-  thedeque.push_front("bob");
-  thedeque.push_back("ellis");
+  thedeque.push_front(Foo(4, "mary"));
+  thedeque.push_front(Foo(5, "bob"));
+  thedeque.push_back(Foo(6, "ellis"));
 
   thevector.push_back(thedeque);
 
@@ -662,31 +662,47 @@ TEST_F(EmitterTest, NestedSTLContainersPart3) {
     - 01
   -
     -
-      - hello
-      - world
+      - x: 0
+        bar: hello
+      - x: 1
+        bar: world
     -
-      - hello
-      - john
-      - kate
+      - x: 0
+        bar: hello
+      - x: 2
+        bar: john
+      - x: 3
+        bar: kate
 two:
   -
     - 11
     - 01
   -
     -
-      - hello
-      - world
+      - x: 0
+        bar: hello
+      - x: 1
+        bar: world
     -
-      - hello
-      - john
-      - kate
+      - x: 0
+        bar: hello
+      - x: 2
+        bar: john
+      - x: 3
+        bar: kate
     -
-      - bob
-      - mary
-      - hello
-      - john
-      - kate
-      - ellis)");
+      - x: 5
+        bar: bob
+      - x: 4
+        bar: mary
+      - x: 0
+        bar: hello
+      - x: 2
+        bar: john
+      - x: 3
+        bar: kate
+      - x: 6
+        bar: ellis)");
 }
 
 template <class T>
@@ -778,6 +794,28 @@ TEST_F(EmitterTest, StdTupleSize6) {
   2: 4
   3: 9
   4: 16)");
+}
+
+TEST_F(EmitterTest, StdTupleSize7) {
+  out << std::make_tuple(
+      42, 3.141592f, "hello", "world", std::vector<int>{2, 3, 5, 7},
+      std::map<int, int>{{1, 1}, {2, 4}, {3, 9}, {4, 16}}, Foo(10, "foo"));
+
+  ExpectEmit(R"(- 42
+- 3.141592
+- hello
+- world
+-
+  - 2
+  - 3
+  - 5
+  - 7
+- 1: 1
+  2: 4
+  3: 9
+  4: 16
+- x: 10
+  bar: foo)");
 }
 
 TEST_F(EmitterTest, SimpleComment) {
