@@ -1,6 +1,6 @@
 environment:
-  PROJECT_FOLDER: "c:/projects/yaml-cpp"
-  INSTALL_PREFIX: "c:/installs"
+  PROJECT_FOLDER: "c:/yaml-cpp"
+  INSTALL_PREFIX: "c:/install"
 
 # branches to build
 branches:
@@ -18,24 +18,26 @@ init:
 # clone directory
 clone_folder: "%PROJECT_FOLDER%"
 
-platform: x64
-configuration: Release
+platform:
+  - x86
+  - x64
+
+configuration:
+  - Debug
+  - Release
 
 install:
 
 # scripts to run before build
 before_build:
-  - cd %PROJECT_FOLDER%
-  - mkdir build
-  - cd build
-  - cmake .. -DCMAKE_INSTALL_PREFIX=%INSTALL_PREFIX%
+  - cmake . -DCMAKE_INSTALL_PREFIX=%INSTALL_PREFIX%
 
 # What solutions to build
 build:
-  project: "%PROJECT_FOLDER%/build/ALL_BUILD.vcxproj"
+  project: ALL_BUILD.vcxproj
 
 # scripts to run after build
 after_build:
-  - cd test/Release
-  - run-tests.exe
+  - test/Debug/run-tests.exe
+  - test/Release/run-tests.exe
 
