@@ -656,6 +656,7 @@ TEST_F(EmitterTest, NestedSTLContainersPart3) {
 
   // something crazy that hopefully nobody will ever use in practise but at
   // least this works.
+  // NOTE: output seems overly verbose (what with the redundant newlines)
   ExpectEmit(R"(one:
   -
     - 01
@@ -717,6 +718,66 @@ TEST_F(EmitterTest, StdMapCustomAllocator) {
 
   // NOTE: map runs through its element sorted.
   ExpectEmit("eleven: 11\nfive: 5\nseven: 7\nthirteen: 13\nthree: 3\ntwo: 2");
+}
+
+TEST_F(EmitterTest, StdTupleSize0) {
+  out << std::tuple<>();
+  ExpectEmit("~");
+}
+
+TEST_F(EmitterTest, StdTupleSize1) {
+  out << std::make_tuple(42);
+  ExpectEmit("- 42");
+}
+
+TEST_F(EmitterTest, StdTupleSize2) {
+  out << std::make_tuple(42, 3.141592f);
+  ExpectEmit("- 42\n- 3.141592");
+}
+
+TEST_F(EmitterTest, StdTupleSize3) {
+  out << std::make_tuple(42, 3.141592f, "hello");
+  ExpectEmit("- 42\n- 3.141592\n- hello");
+}
+
+TEST_F(EmitterTest, StdTupleSize4) {
+  out << std::make_tuple(42, 3.141592f, "hello", "world");
+  ExpectEmit("- 42\n- 3.141592\n- hello\n- world");
+}
+
+TEST_F(EmitterTest, StdTupleSize5) {
+  out << std::make_tuple(42, 3.141592f, "hello", "world",
+                         std::vector<int>{2, 3, 5, 7});
+  ExpectEmit(
+      R"(- 42
+- 3.141592
+- hello
+- world
+-
+  - 2
+  - 3
+  - 5
+  - 7)");
+}
+
+TEST_F(EmitterTest, StdTupleSize6) {
+  out << std::make_tuple(42, 3.141592f, "hello", "world",
+                         std::vector<int>{2, 3, 5, 7},
+                         std::map<int, int>{{1, 1}, {2, 4}, {3, 9}, {4, 16}});
+
+  ExpectEmit(R"(- 42
+- 3.141592
+- hello
+- world
+-
+  - 2
+  - 3
+  - 5
+  - 7
+- 1: 1
+  2: 4
+  3: 9
+  4: 16)");
 }
 
 TEST_F(EmitterTest, SimpleComment) {

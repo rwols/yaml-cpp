@@ -1,6 +1,12 @@
 #include "yaml-cpp/yaml.h"
 #include "gtest/gtest.h"
 
+#define PRINT_TO_STDOUT
+
+#ifdef PRINT_TO_STDOUT
+#include <iostream>
+#endif
+
 namespace YAML {
 namespace {
 
@@ -11,6 +17,9 @@ class EmitParseDecodeTest : public ::testing::Test {
     std::stringstream ss;
     Emitter out(ss);
     out << expected;                            // emit the thing
+#ifdef PRINT_TO_STDOUT                          // optionally
+    std::cout << ss.str() << '\n';              // print to
+#endif                                          // stdout
     const auto node = Load(ss.str());           // parse it
     const auto actual = node.template as<T>();  // then decode it back
     EXPECT_EQ(expected, actual);                // should equal the original
@@ -256,6 +265,35 @@ TEST_F(EmitParseDecodeTest, StdNestedNonsense) {
   data["two"] = std::make_pair(thelist, thevector);
 
   check(data);
+}
+
+TEST_F(EmitParseDecodeTest, VitaHomebrews) {
+  /*
+  homebrews:
+    vita:
+      - name: "PSP2048"
+        author: dots-tb
+      - name: "PSVident"
+        author: Freakler
+  */
+
+  std::map<
+      std::string,
+      std::map<std::string, std::vector<std::map<std::string, std::string>>>>
+      doc;
+
+  std::map<std::string, std::string> nameAuthor;
+  nameAuthor["name"] = "PSP2048";
+  nameAuthor["author"] = "dots-tb";
+  std::vector<std::map<std::string, std::string>> list;
+  list.push_back(nameAuthor);
+  nameAuthor["name"] = "PSVident";
+  nameAuthor["author"] = "Freakler";
+  list.push_back(nameAuthor);
+
+  doc["homebrews"]["vita"] = list;
+
+  check(doc);
 }
 
 }  // anonymous namespace
