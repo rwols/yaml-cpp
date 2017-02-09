@@ -9,6 +9,60 @@ TEST(LoadNodeTest, Reassign) {
   node = Node();
 }
 
+TEST(LoadNodeTest, Char) {
+  const auto node = Load("c");
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ('c', node.as<char>());
+}
+
+TEST(LoadNodeTest, WCharT1) {
+  const auto node = Load("🍺");
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(L'🍺', node.as<wchar_t>());
+}
+
+TEST(LoadNodeTest, WCharT2) {
+  const auto node = Load("😁");
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(L'😁', node.as<wchar_t>());
+}
+
+TEST(LoadNodeTest, WString1) {
+  const auto node = Load("ジンボはリンゴを食べる。");
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(L"ジンボはリンゴを食べる。", node.as<std::wstring>());
+
+  // even std::string should support this; std::string is UTF8
+  EXPECT_EQ("ジンボはリンゴを食べる。", node.as<std::string>());
+}
+
+TEST(LoadNodeTest, WString2) {
+  // russian lorem-ipsum
+  const auto node = Load(
+      "Лорем ипсум долор сит амет, дицта лаореет демоцритум но хас, вис ут "
+      "дицит индоцтум. Еверти персеяуерис ут хис, иус но реформиданс "
+      "диспутатиони интерпретарис. Мел нонумы минимум те. Ностер цопиосае меа "
+      "ан, инвидунт пхаедрум волуптариа ест еу. Еу сумо хабемус тациматес цум, "
+      "пер елояуентиам цонсецтетуер ин.");
+
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(
+      L"Лорем ипсум долор сит амет, дицта лаореет демоцритум но хас, вис ут "
+      L"дицит индоцтум. Еверти персеяуерис ут хис, иус но реформиданс "
+      L"диспутатиони интерпретарис. Мел нонумы минимум те. Ностер цопиосае меа "
+      L"ан, инвидунт пхаедрум волуптариа ест еу. Еу сумо хабемус тациматес "
+      L"цум, пер елояуентиам цонсецтетуер ин.",
+      node.as<std::wstring>());
+
+  EXPECT_EQ(
+      "Лорем ипсум долор сит амет, дицта лаореет демоцритум но хас, вис ут "
+      "дицит индоцтум. Еверти персеяуерис ут хис, иус но реформиданс "
+      "диспутатиони интерпретарис. Мел нонумы минимум те. Ностер цопиосае меа "
+      "ан, инвидунт пхаедрум волуптариа ест еу. Еу сумо хабемус тациматес цум, "
+      "пер елояуентиам цонсецтетуер ин.",
+      node.as<std::string>());
+}
+
 TEST(LoadNodeTest, FallbackValues) {
   Node node = Load("foo: bar\nx: 2");
   EXPECT_EQ("bar", node["foo"].as<std::string>());
@@ -20,7 +74,7 @@ TEST(LoadNodeTest, FallbackValues) {
 }
 
 TEST(LoadNodeTest, NumericConversion) {
-  Node node = Load("[1.5, 1, .nan, .inf, -.inf, 0x15, 015]");
+  Node node = Load("[1.5, 1, .nan, .inf, -.inf, 0x15, 0o15]");
   EXPECT_EQ(1.5f, node[0].as<float>());
   EXPECT_EQ(1.5, node[0].as<double>());
   EXPECT_THROW(node[0].as<int>(), TypedBadConversion<int>);
@@ -31,6 +85,100 @@ TEST(LoadNodeTest, NumericConversion) {
   EXPECT_EQ(-std::numeric_limits<float>::infinity(), node[4].as<float>());
   EXPECT_EQ(21, node[5].as<int>());
   EXPECT_EQ(13, node[6].as<int>());
+}
+
+TEST(LoadNodeTest, NumericParseFailure) {
+  auto node = Load("123a");
+  EXPECT_THROW(node.as<signed char>(), TypedBadConversion<signed char>);
+  EXPECT_THROW(node.as<unsigned char>(), TypedBadConversion<unsigned char>);
+  EXPECT_THROW(node.as<short>(), TypedBadConversion<short>);
+  EXPECT_THROW(node.as<unsigned short>(), TypedBadConversion<unsigned short>);
+  EXPECT_THROW(node.as<int>(), TypedBadConversion<int>);
+  EXPECT_THROW(node.as<unsigned int>(), TypedBadConversion<unsigned int>);
+  EXPECT_THROW(node.as<long>(), TypedBadConversion<long>);
+  EXPECT_THROW(node.as<unsigned long>(), TypedBadConversion<unsigned long>);
+  EXPECT_THROW(node.as<long long>(), TypedBadConversion<long long>);
+  EXPECT_THROW(node.as<unsigned long long>(),
+               TypedBadConversion<unsigned long long>);
+  EXPECT_THROW(node.as<float>(), TypedBadConversion<float>);
+  EXPECT_THROW(node.as<double>(), TypedBadConversion<double>);
+  EXPECT_THROW(node.as<long double>(), TypedBadConversion<long double>);
+}
+
+TEST(LoadNodeTest, Hexadecimal) {
+  auto node = Load("0x1a");  // 1 * 16 + 10 * 1 = 26
+  EXPECT_EQ(26, node.as<signed char>());
+  EXPECT_EQ(26, node.as<unsigned char>());
+  EXPECT_EQ(26, node.as<short>());
+  EXPECT_EQ(26, node.as<unsigned short>());
+  EXPECT_EQ(26, node.as<int>());
+  EXPECT_EQ(26, node.as<unsigned int>());
+  EXPECT_EQ(26, node.as<long>());
+  EXPECT_EQ(26, node.as<unsigned long>());
+  EXPECT_EQ(26, node.as<long long>());
+  EXPECT_EQ(26, node.as<unsigned long long>());
+
+  node = Load("0X1A");
+  EXPECT_EQ(26, node.as<signed char>());
+  EXPECT_EQ(26, node.as<unsigned char>());
+  EXPECT_EQ(26, node.as<short>());
+  EXPECT_EQ(26, node.as<unsigned short>());
+  EXPECT_EQ(26, node.as<int>());
+  EXPECT_EQ(26, node.as<unsigned int>());
+  EXPECT_EQ(26, node.as<long>());
+  EXPECT_EQ(26, node.as<unsigned long>());
+  EXPECT_EQ(26, node.as<long long>());
+  EXPECT_EQ(26, node.as<unsigned long long>());
+
+  node = Load("0X1a");
+  EXPECT_EQ(26, node.as<signed char>());
+  EXPECT_EQ(26, node.as<unsigned char>());
+  EXPECT_EQ(26, node.as<short>());
+  EXPECT_EQ(26, node.as<unsigned short>());
+  EXPECT_EQ(26, node.as<int>());
+  EXPECT_EQ(26, node.as<unsigned int>());
+  EXPECT_EQ(26, node.as<long>());
+  EXPECT_EQ(26, node.as<unsigned long>());
+  EXPECT_EQ(26, node.as<long long>());
+  EXPECT_EQ(26, node.as<unsigned long long>());
+
+  node = Load("0x1A");
+  EXPECT_EQ(26, node.as<signed char>());
+  EXPECT_EQ(26, node.as<unsigned char>());
+  EXPECT_EQ(26, node.as<short>());
+  EXPECT_EQ(26, node.as<unsigned short>());
+  EXPECT_EQ(26, node.as<int>());
+  EXPECT_EQ(26, node.as<unsigned int>());
+  EXPECT_EQ(26, node.as<long>());
+  EXPECT_EQ(26, node.as<unsigned long>());
+  EXPECT_EQ(26, node.as<long long>());
+  EXPECT_EQ(26, node.as<unsigned long long>());
+}
+
+TEST(LoadNodeTest, Octal) {
+  auto node = Load("0o42");  // 4 * 8 + 2 * 1 = 34
+  EXPECT_EQ(34, node.as<signed char>());
+  EXPECT_EQ(34, node.as<unsigned char>());
+  EXPECT_EQ(34, node.as<short>());
+  EXPECT_EQ(34, node.as<unsigned short>());
+  EXPECT_EQ(34, node.as<int>());
+  EXPECT_EQ(34, node.as<unsigned int>());
+  EXPECT_EQ(34, node.as<long>());
+  EXPECT_EQ(34, node.as<unsigned long>());
+  EXPECT_EQ(34, node.as<long long>());
+  EXPECT_EQ(34, node.as<unsigned long long>());
+
+  node = Load("0O42");
+  EXPECT_EQ(34, node.as<signed char>());
+  EXPECT_EQ(34, node.as<unsigned char>());
+  EXPECT_EQ(34, node.as<short>());
+  EXPECT_EQ(34, node.as<unsigned short>());
+  EXPECT_EQ(34, node.as<int>());
+  EXPECT_EQ(34, node.as<unsigned int>());
+  EXPECT_EQ(34, node.as<long>());
+  EXPECT_EQ(34, node.as<unsigned long>());
+  EXPECT_EQ(34, node.as<long long>());
+  EXPECT_EQ(34, node.as<unsigned long long>());
 }
 
 TEST(LoadNodeTest, Binary) {

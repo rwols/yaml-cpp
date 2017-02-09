@@ -62,8 +62,10 @@ class YAML_CPP_API Emitter : private noncopyable {
 
   // overloads of write
   Emitter& Write(const std::string& str);
+  Emitter& Write(const std::wstring& wstr);
   Emitter& Write(bool b);
   Emitter& Write(char ch);
+  Emitter& Write(wchar_t ch);
   Emitter& Write(const _Alias& alias);
   Emitter& Write(const _Anchor& anchor);
   Emitter& Write(const _Tag& tag);
@@ -174,14 +176,23 @@ inline void Emitter::SetStreamablePrecision<double>(std::stringstream& stream) {
 inline Emitter& operator<<(Emitter& emitter, const std::string& v) {
   return emitter.Write(v);
 }
+inline Emitter& operator<<(Emitter& emitter, const std::wstring& v) {
+  return emitter.Write(v);
+}
 inline Emitter& operator<<(Emitter& emitter, bool v) {
   return emitter.Write(v);
 }
 inline Emitter& operator<<(Emitter& emitter, char v) {
   return emitter.Write(v);
 }
+inline Emitter& operator<<(Emitter& emitter, wchar_t v) {
+  return emitter.Write(v);
+}
+inline Emitter& operator<<(Emitter& emitter, signed char v) {
+  return emitter.WriteIntegralType(static_cast<int>(v));
+}
 inline Emitter& operator<<(Emitter& emitter, unsigned char v) {
-  return emitter.Write(static_cast<char>(v));
+  return emitter.WriteIntegralType(static_cast<unsigned int>(v));
 }
 inline Emitter& operator<<(Emitter& emitter, const _Alias& v) {
   return emitter.Write(v);
@@ -213,10 +224,10 @@ inline Emitter& operator<<(Emitter& emitter, unsigned int v) {
   return emitter.WriteIntegralType(v);
 }
 inline Emitter& operator<<(Emitter& emitter, short v) {
-  return emitter.WriteIntegralType(v);
+  return emitter.WriteIntegralType(static_cast<int>(v));
 }
 inline Emitter& operator<<(Emitter& emitter, unsigned short v) {
-  return emitter.WriteIntegralType(v);
+  return emitter.WriteIntegralType(static_cast<unsigned int>(v));
 }
 inline Emitter& operator<<(Emitter& emitter, long v) {
   return emitter.WriteIntegralType(v);

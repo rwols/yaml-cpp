@@ -28,10 +28,183 @@ TEST(NodeTest, SimpleScalar) {
   EXPECT_EQ("Hello, World!", node.as<std::string>());
 }
 
-TEST(NodeTest, IntScalar) {
-  Node node = Node(15);
+#define TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(TESTNAME, TYPE)           \
+  TEST(NodeTest, TESTNAME) {                                         \
+    const auto x = static_cast<TYPE>(rand());                        \
+    const auto node = Node(x);                                       \
+    const auto nodeMin = Node(std::numeric_limits<TYPE>::min());     \
+    const auto nodeMax = Node(std::numeric_limits<TYPE>::max());     \
+    EXPECT_TRUE(node.IsScalar());                                    \
+    EXPECT_TRUE(nodeMin.IsScalar());                                 \
+    EXPECT_TRUE(nodeMax.IsScalar());                                 \
+    EXPECT_EQ(x, node.as<TYPE>());                                   \
+    EXPECT_EQ(std::numeric_limits<TYPE>::min(), nodeMin.as<TYPE>()); \
+    EXPECT_EQ(std::numeric_limits<TYPE>::max(), nodeMax.as<TYPE>()); \
+  }
+
+TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(BoolPrim, bool);
+TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(Char, char);
+TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(SignedChar, signed char);
+TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(UnsignedChar, unsigned char);
+TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(Int, int);
+TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(UnsignedInt, unsigned int);
+TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(Long, long);
+TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(LongLong, long long);
+TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(UnsignedLong, unsigned long);
+TEST_INTEGRAL_PRIMITIVE_RANDOMIZED(UnsignedLongLong, unsigned long long);
+
+TEST(NodeTest, SignedChars) {
+  auto node = Node((signed char)-10);
   EXPECT_TRUE(node.IsScalar());
-  EXPECT_EQ(15, node.as<int>());
+  EXPECT_EQ("-10", node.Scalar());
+}
+
+TEST(NodeTest, UnsignedChars) {
+  auto node = Node((unsigned char)250);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ("250", node.Scalar());
+}
+
+TEST(NodeTest, FloatPositiveInfinity) {
+  const auto x = std::numeric_limits<float>::infinity();
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<float>());
+}
+
+TEST(NodeTest, FloatNegativeInfinity) {
+  const auto x = -std::numeric_limits<float>::infinity();
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<float>());
+}
+
+TEST(NodeTest, FloatNaN) {
+  const auto x = std::numeric_limits<float>::quiet_NaN();
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_TRUE(std::isnan(node.as<float>()));
+}
+
+TEST(NodeTest, DoublePositiveInfinity) {
+  const auto x = std::numeric_limits<double>::infinity();
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<double>());
+}
+
+TEST(NodeTest, DoubleNegativeInfinity) {
+  const auto x = -std::numeric_limits<double>::infinity();
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<double>());
+}
+
+TEST(NodeTest, DoubleNaN) {
+  const auto x = std::numeric_limits<double>::quiet_NaN();
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_TRUE(std::isnan(node.as<double>()));
+}
+
+TEST(NodeTest, LongDoublePositiveInfinity) {
+  const auto x = std::numeric_limits<long double>::infinity();
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<long double>());
+}
+
+TEST(NodeTest, LongDoubleNegativeInfinity) {
+  const auto x = -std::numeric_limits<long double>::infinity();
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<long double>());
+}
+
+TEST(NodeTest, LongDoubleNaN) {
+  const auto x = std::numeric_limits<long double>::quiet_NaN();
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_TRUE(std::isnan(node.as<long double>()));
+}
+
+std::string generateRandomString(const std::size_t length) {
+  static const char alphabet[] =
+      "0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz"
+      " /\\!@#$%^&*()<>,.?;:|~`\""
+      "'[]{}-_=+\n\t";
+  std::string result;
+  result.reserve(length + 1);
+  for (std::size_t i = 0; i != length; ++i) {
+    result.push_back(alphabet[rand() % (sizeof(alphabet) - 1)]);
+  }
+  return result;
+}
+
+TEST(NodeTest, VeryLargeRandomString) {
+  constexpr std::size_t length = 10ul * 1024ul * 1024ul;  // 10 megabyte
+  const auto str = generateRandomString(length);
+  const auto node = Node(str);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(str, node.as<std::string>());
+}
+
+TEST(NodeTest, Int8_t) {
+  std::int8_t x = 126;
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<std::int8_t>());
+}
+
+TEST(NodeTest, Int16_t) {
+  std::int16_t x = 2 << 14;
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<std::int16_t>());
+}
+
+TEST(NodeTest, Int32_t) {
+  std::int32_t x = 2l << 30;
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<std::int32_t>());
+}
+
+TEST(NodeTest, Int64_t) {
+  std::int64_t x = std::int64_t(2) << 62;
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<std::int64_t>());
+}
+
+TEST(NodeTest, UInt8_t) {
+  std::uint8_t x = 0xff;
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<std::uint8_t>());
+}
+
+TEST(NodeTest, UInt16_t) {
+  std::uint16_t x = 0xffff;
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<std::uint16_t>());
+}
+
+TEST(NodeTest, UInt32_t) {
+  std::uint32_t x = 0xffffffff;
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<std::uint32_t>());
+}
+
+TEST(NodeTest, UInt64_t) {
+  std::uint64_t x = 0xffffffffffffffff;
+  const auto node = Node(x);
+  EXPECT_TRUE(node.IsScalar());
+  EXPECT_EQ(x, node.as<std::uint64_t>());
 }
 
 TEST(NodeTest, SimpleAppendSequence) {

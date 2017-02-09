@@ -1153,6 +1153,36 @@ TEST_F(EmitterTest, SingleChar) {
   ExpectEmit("- a\n- \":\"\n- \"\\x10\"\n- \"\\n\"\n- \" \"\n- \"\\t\"");
 }
 
+TEST_F(EmitterTest, SignedChar) {
+  out << BeginSeq << static_cast<signed char>(126)
+      << static_cast<signed char>(-10) << static_cast<signed char>(9) << EndSeq;
+  ExpectEmit("- 126\n- -10\n- 9");
+}
+
+TEST_F(EmitterTest, UnsignedChar) {
+  out << BeginSeq << static_cast<unsigned char>(255)
+      << static_cast<unsigned char>(0) << static_cast<unsigned char>(128)
+      << EndSeq;
+  ExpectEmit("- 255\n- 0\n- 128");
+}
+
+TEST_F(EmitterTest, SingleWCharT) {
+  out << BeginSeq;
+  out << L'🍺';  // wchar_t
+  out << ':';
+  out << '\n';
+  out << ' ';
+  out << '\t';
+  out << EndSeq;
+  ExpectEmit("- 🍺\n- \":\"\n- \"\\n\"\n- \" \"\n- \"\\t\"");
+}
+
+TEST_F(EmitterTest, WString1) {
+  out << BeginMap << Key << std::wstring(L"ジンボはリンゴを食べる。") << Value
+      << "asdf" << EndMap;
+  ExpectEmit("ジンボはリンゴを食べる。: asdf");
+}
+
 TEST_F(EmitterTest, DefaultPrecision) {
   out << BeginSeq;
   out << 1.234f;

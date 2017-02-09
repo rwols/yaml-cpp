@@ -6,6 +6,8 @@
 #include "yaml-cpp/emitterdef.h"
 #include "yaml-cpp/emittermanip.h"
 #include "yaml-cpp/exceptions.h"  // IWYU pragma: keep
+#include <codecvt>
+#include <locale>
 
 namespace YAML {
 class Binary;
@@ -709,6 +711,13 @@ Emitter& Emitter::Write(const std::string& str) {
   return *this;
 }
 
+Emitter& Emitter::Write(const std::wstring& wstr) {
+  if (!good())
+    return *this;
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return Write(converter.to_bytes(wstr));
+}
+
 std::size_t Emitter::GetFloatPrecision() const {
   return m_pState->GetFloatPrecision();
 }
@@ -792,6 +801,13 @@ Emitter& Emitter::Write(char ch) {
   StartedScalar();
 
   return *this;
+}
+
+Emitter& Emitter::Write(wchar_t ch) {
+  if (!good())
+    return *this;
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return Write(converter.to_bytes(ch));
 }
 
 Emitter& Emitter::Write(const _Alias& alias) {
